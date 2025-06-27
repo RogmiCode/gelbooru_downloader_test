@@ -1,0 +1,22 @@
+# Ignorar modelos grandes y archivos temporales
+
+tagger/models/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+.env
+.venv
+.envrc
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Ignorar archivos de salida de Streamlit
+.streamlit/
+
+# Ignorar archivos ZIP generados
+*.zip
