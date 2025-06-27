@@ -1,12 +1,11 @@
 import streamlit as st
-import requests
-from typing import List, Tuple, Optional
-import io
-import zipfile
 import pandas as pd
 from streamlit_searchbox import st_searchbox
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+from typing import List
+from utils.downloader import descargar_imagenes_en_memoria
+from services.tag_service import extraer_tags_y_comprimir
+import requests
 
 # Configuración inicial de la página
 st.set_page_config(page_title="Descargador Gelbooru", layout="wide")
@@ -107,49 +106,6 @@ def buscar_imagenes_gelbooru(
                 break
     
     return imagenes[:limit]
-
-def descargar_imagen(url: str, idx: int) -> Optional[Tuple[int, bytes, str]]:
-    """Descarga una imagen individual con manejo de errores."""
-    try:
-        resp = requests.get(url, timeout=15)
-        resp.raise_for_status()
-        return (idx, resp.content, f"gelbooru_{idx}.jpg")
-    except Exception as e:
-        st.warning(f'Error al descargar imagen {idx}: {str(e)}')
-        return None
-
-def descargar_imagenes_en_memoria(imagenes: List[dict]) -> io.BytesIO:
-    """Descarga y comprime imágenes concurrentemente con progreso."""
-    zip_buffer = io.BytesIO()
-    urls = [(img.get('file_url'), idx+1) for idx, img in enumerate(imagenes) if img.get('file_url')]
-    
-    if not urls:
-        st.error("No hay URLs válidas para descargar")
-        return zip_buffer
-    
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    total = len(urls)
-    
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(descargar_imagen, url, idx) for url, idx in urls]
-        
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as zip_file:
-            for i, future in enumerate(as_completed(futures)):
-                result = future.result()
-                if result:
-                    idx, content, filename = result
-                    zip_file.writestr(filename, content)
-                
-                # Actualizar progreso
-                progress = (i + 1) / total
-                progress_bar.progress(progress)
-                status_text.text(f"Descargando {i+1}/{total} imágenes...")
-    
-    progress_bar.empty()
-    status_text.empty()
-    zip_buffer.seek(0)
-    return zip_buffer
 
 # Inicialización del estado de la sesión
 def inicializar_estado():
@@ -306,11 +262,24 @@ def main():
                 zip_buffer = descargar_imagenes_en_memoria(st.session_state.imagenes)
                 elapsed = time.time() - start_time
                 st.success(f"Archivo ZIP listo en {elapsed:.2f} segundos")
-                
                 st.download_button(
                     label="Descargar ZIP",
                     data=zip_buffer,
                     file_name="imagenes_gelbooru.zip",
+                    mime="application/zip",
+                    type="primary"
+                )
+        # Botón para extraer tags y comprimir
+        if st.button("Extraer tags y comprimir imágenes", type="secondary"):
+            start_time = time.time()
+            with st.spinner("Extrayendo tags y preparando ZIP..."):
+                zip_buffer = extraer_tags_y_comprimir(st.session_state.imagenes)
+                elapsed = time.time() - start_time
+                st.success(f"ZIP con imágenes y tags listo en {elapsed:.2f} segundos")
+                st.download_button(
+                    label="Descargar ZIP con tags",
+                    data=zip_buffer,
+                    file_name="imagenes_tags_gelbooru.zip",
                     mime="application/zip",
                     type="primary"
                 )
