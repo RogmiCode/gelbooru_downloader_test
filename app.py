@@ -4,15 +4,18 @@ from streamlit_searchbox import st_searchbox
 import time
 from typing import List
 from utils.downloader import descargar_imagenes_en_memoria
+from utils.model_downloader import descargar_archivo_si_no_existe
 from services.tag_service import extraer_tags_y_comprimir
 import requests
+import os
 
 # Configuración inicial de la página
 st.set_page_config(page_title="Descargador Gelbooru", layout="wide")
 st.title("Descarga de imágenes desde gelbooru.com")
 st.markdown("""
 Descarga imágenes de Gelbooru, selecciona los tags que quieras incluir y excluir en la busqueda. 
-Puedes usarlo para la descarga masiva de imágenes que puedes usar para crear datasets rápidamente y crear modelos de IA.
+Puedes usarlo para la descarga masiva de
+ imágenes que puedes usar para crear datasets rápidamente y crear modelos de IA.
 """)
 
 # Estilos CSS optimizados
@@ -40,6 +43,15 @@ MAX_WORKERS = 10  # Número máximo de hilos para descargas concurrentes
 IMGS_PER_PAGE = 10  # Imágenes por página en la galería
 DEFAULT_API_KEY = "81a22cff97c4318582917a6cde4b8b99ea448e655b3d11df3c9fa55233da13e2595e51e960085805c00374192cd10e0ac781e4135889b832efd2058a6cd43498"
 DEFAULT_USER_ID = "1741452"
+
+# --- Descarga automática de modelos y archivos necesarios ---
+MODEL_URL = "https://huggingface.co/SmilingWolf/wd-swinv2-tagger-v3/resolve/main/model.onnx?download=true"
+MODEL_PATH = os.path.join("tagger", "models", "wd-swinv2-tagger-v3", "model.onnx")
+TAGS_CSV_URL = "https://huggingface.co/SmilingWolf/wd-swinv2-tagger-v3/resolve/main/selected_tags.csv?download=true"
+TAGS_CSV_PATH = os.path.join("tagger", "models", "wd-swinv2-tagger-v3", "selected_tags.csv")
+
+descargar_archivo_si_no_existe(MODEL_URL, MODEL_PATH, "modelo ONNX")
+descargar_archivo_si_no_existe(TAGS_CSV_URL, TAGS_CSV_PATH, "selected_tags.csv")
 
 # Caché para tags
 @st.cache_data(ttl=3600, show_spinner="Cargando lista de tags...")
